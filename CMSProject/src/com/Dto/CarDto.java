@@ -7,6 +7,7 @@ public class CarDto {
 	private String entrance; 
 	private String area;
 	private int area_num;
+	private String payment;
 	public CarDto() {}
 	public CarDto(String car_number,String entrance,String area,int area_num) {
 		this.car_number = car_number;
@@ -14,8 +15,21 @@ public class CarDto {
 		this.area = area;
 		this.area_num = area_num;
 	}
+	public CarDto(String car_number,String entrance,String area,int area_num,String payment) {
+		this.car_number = car_number;
+		this.entrance = entrance;
+		this.area = area;
+		this.area_num = area_num;
+		this.payment = payment;
+	}
 	
 	
+	public String getPayment() {
+		return payment;
+	}
+	public void setPayment(String payment) {
+		this.payment = payment;
+	}
 	public String getArea() {
 		return area;
 	}

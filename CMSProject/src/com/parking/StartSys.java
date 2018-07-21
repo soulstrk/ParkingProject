@@ -1,5 +1,6 @@
 package com.parking;
 
+import java.beans.FeatureDescriptor;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -15,26 +16,29 @@ import com.Dto.parkingDto;
 
 public class StartSys {
 	private static Dao dao = new Dao();
-	Scanner sc = new Scanner(System.in);
-
+	private static Scanner sc = new Scanner(System.in);
+	//private static int paymentFee;
 	
 	public StartSys() {
 		while(true) {
 		System.out.println("----------------------------------------------");
-		System.out.println("     1.고객    2.관리자   3.현재 주차장 보기 4.시스템종료");
+		System.out.println("     1.고객    2.관리자   3.현재 주차장 보기  4.시스템종료");
 		System.out.println("----------------------------------------------");
 		System.out.print("선택>");
 		int selectNum1 = sc.nextInt();
 		if (selectNum1 == 1) {
-			System.out.println("---------------------------------------------------");
-			System.out.println("           1.입차\t             2.출차\t");
-			System.out.println("---------------------------------------------------");
+			System.out.println("--------------------------------------------------------");
+			System.out.println("      1.입차\t       2.출차\t\t3.선결제");
+			System.out.println("--------------------------------------------------------");
 			System.out.println("선택>");
 			int selectNum2 = sc.nextInt();
 			if (selectNum2 == 1) {
 				entrance();
 			} else if (selectNum2 == 2) {
 				out();
+			} else if (selectNum2 == 3) {
+				payment();
+				dao.commit();
 			}
 		} else if (selectNum1 == 2) {
 			System.out.println("관리자 비밀번호 입력>");
@@ -209,7 +213,30 @@ public class StartSys {
 		String car_number = sc.next();
 		dto = dao.getCustomer(car_number);
 		carDto = dao.getEntranceTime(car_number);
-		
+		int checkNum = paymentCheck(car_number);
+		if(checkNum == 1) {
+			System.out.println();
+			System.out.println("차량번호:"+carDto.getCar_number()+"     선 결제가 완료된 차량입니다");
+			System.out.println();
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			System.out.println();
+			System.out.println("---------------------------");
+			System.out.println("                   안녕히 가세요.");
+			System.out.println("     "+carDto.getArea()+"구역 " + carDto.getArea_num()+"번 자리 출차 완료");
+			System.out.println("---------------------------");
+			System.out.println();
+			
+			int w = dao.deleteAll(car_number);
+			if(w != -1) {
+				dao.commit();
+			}else {
+				dao.rollback();
+			}
+		}else {
 		String entranceTime = carDto.getEntrance(); // 입차시간
 		String size = dto.getCar_size(); // 나가는 차 크기
 		String discount = dto.getDiscount(); // 나가는 차 할인혜택
@@ -235,6 +262,7 @@ public class StartSys {
 			System.out.println("나온 요금:"+fee+"원 [ 할인 적용대상이 아닙니다 ]");
 		}
 			Thread.sleep(2000);
+			
 			System.out.println();
 			System.out.println();
 			System.out.println("---------------------------");
@@ -251,6 +279,7 @@ public class StartSys {
 			}
 		} catch (InterruptedException e) {
 			System.out.println(e.getMessage());
+		}
 		}
 	}
 
@@ -272,7 +301,7 @@ public class StartSys {
 	// 차량이부제 20%
 	// 가장높은 할인혜택 하나만 적용~! 
 	// 18/07/06 12시33분
-	public int feeCal(String entranceTime,String size,String discount) { // 요금계산 메소드 10분당 700원
+	public static int feeCal(String entranceTime,String size,String discount) { // 요금계산 메소드 10분당 700원
 		entranceTime = entranceTime.substring(3, entranceTime.length() - 1);
 		entranceTime = entranceTime.replace('/', '-').replace('시', ':');
 		System.out.println();
@@ -482,6 +511,55 @@ public class StartSys {
 		
 	}
 	
+	public static int payment() {
+		CustomerDto dto = new CustomerDto();
+		CarDto cDto = new CarDto();
+		String entranceTime = "";
+		System.out.println(" 결제하실 차량번호를 입력해주세요 >");
+		String car_number = sc.next();
+		dto = dao.getCustomer(car_number);
+		cDto = dao.getEntranceTime(car_number);
+		int fee = feeCal(cDto.getEntrance(),dto.getCar_size(),dto.getDiscount());
+		SimpleDateFormat exitDate = new SimpleDateFormat("MM-dd HH:mm");
+		String exit_time = exitDate.format(new Date()); // 출차시간
+		dao.insertStatis(car_number, exit_time, fee, dto.getCar_name());
+		System.out.println();
+		if(dto.getDiscount().equals("국가유공자")) {
+			System.out.println("                                            ◆국가유공자 차량◆");
+			System.out.println("나온 요금:"+fee+"원 [ 50% 할인 적용 금액 ]");
+		}else if(dto.getCar_size().equals("소형")) {
+			System.out.println("                                            ◆소형 차량◆");
+			System.out.println("나온 요금:"+fee+"원 [ 40% 할인 적용 금액 ]");
+		}else if(dto.getDiscount().equals("차량이부제")) {
+			System.out.println("                                            ◆차량이부제 차량◆");
+			System.out.println("나온 요금:"+fee+"원 [ 20% 할인 적용 금액 ]");
+		}else {
+			System.out.println("나온 요금:"+fee+"원 [ 할인 적용대상이 아닙니다 ]");
+		}
+		System.out.println();
+		System.out.println("            결제 방식을 선택해주세요.");
+		System.out.println("|\t        \t|");
+		System.out.println("|\t1.신용카드\t\t|");
+		System.out.println("|\t        \t|");
+		System.out.println("|\t2.현금\t\t|");
+		System.out.println("|\t        \t|");
+		System.out.println("|\t3.교통카드\t\t|");
+		System.out.println("|\t        \t|");
+		System.out.println(">");
+		int g = sc.nextInt();
+		switch (g) {
+		case 1: credit();
+			break;
+		case 2: cash();
+			break;
+		case 3: tMoney();
+		}
+		System.out.println(); System.out.println();
+		int w = dao.carPaymentUpdate(car_number);
+		if(w == -1) { System.out.println("업데이트 문제발생"); }
+		return fee;
+	}
+	
 	public static boolean zonze(int arr[],int w) { 
 		boolean flag = false;
 		for (int i = 0; i < 30; i++) {
@@ -515,5 +593,66 @@ public class StartSys {
 		String car_number = cDto.getCar_number();
 		dto = dao.getCustomer(car_number);
 		return dto.getCar_size();
+	}
+	
+	public static void credit() {
+		try {
+			System.out.println();
+			System.out.println("신용카드를 넣어주세요.");
+			Thread.sleep(1200);
+			System.out.println();
+			System.out.print("결제 처리중");
+			for (int i = 0; i < 3; i++) {
+				System.out.print(">");
+				Thread.sleep(700);
+			}
+			System.out.println();
+			System.out.println();
+			System.out.println(" 선결제가 완료 되었습니다. 10분안에 출차 해주십시오.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void cash() {
+		try {
+			System.out.println();
+			System.out.println("현금을 넣어주세요.");
+			Thread.sleep(2000);
+			System.out.println();
+			System.out.println();
+			System.out.println(" 선결제가 완료 되었습니다. 10분안에 출차 해주십시오.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void tMoney() {
+		try {
+			System.out.println();
+			System.out.println("교통카드를 찍어주세요.");
+			Thread.sleep(500);
+			System.out.println();
+			System.out.println();
+			System.out.println(" 선결제가 완료 되었습니다. 10분안에 출차 해주십시오.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static int paymentCheck(String car_number) {
+		String payment = dao.getEntranceTime(car_number).getPayment();
+		if(payment == null) {
+			payment = "미결제";
+		}
+		if(payment.equals("선결제")) {
+			return 1;
+		}else {
+			return -1;
+		}
+	}
+	
+	public static void paymentOk() {
+		
 	}
 }

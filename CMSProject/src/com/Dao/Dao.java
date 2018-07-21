@@ -72,7 +72,7 @@ public class Dao {
 	public int carInput(String car_number) {// car테이블 입력
 		PreparedStatement pstmt = null;
 		try {
-			String sql = "insert into car values(?,TO_CHAR(sysdate,'YY/MM/DD HH24\"시\"MI\"분\"'),null,null)";
+			String sql = "insert into car values(?,TO_CHAR(sysdate,'YY/MM/DD HH24\"시\"MI\"분\"'),null,null,null)";
 			pstmt = conn.prepareStatement(sql);
 			pstmt.setString(1, car_number);
 			int w = pstmt.executeUpdate();
@@ -111,6 +111,26 @@ public class Dao {
 		}
 	}
 
+	public int carPaymentUpdate(String car_number) {// car테이블 업데이트
+		PreparedStatement pstmt = null;
+		try {
+			String sql = "update car set payment = '선결제' where car_number = ?";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, car_number);
+			int w = pstmt.executeUpdate();
+			return w;
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			return -1;
+		} finally {
+			try {
+				pstmt.close();
+			} catch (Exception e2) {
+				System.out.println(e2.getMessage());
+			}
+		}
+	}
+	
 	public int vacant(char ch) { // parking 테이블 구역 빈자리 리턴메소드
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -260,7 +280,8 @@ public class Dao {
 				String entranceTime = rs.getString("entrancetime");
 				String area = rs.getString("area");
 				int area_num = rs.getInt("area_num");
-				dto = new CarDto(car_number, entranceTime, area, area_num);
+				String payment = rs.getString("payment");
+				dto = new CarDto(car_number, entranceTime, area, area_num, payment);
 			}
 			return dto;
 		} catch (Exception e) {
